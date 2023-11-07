@@ -39,6 +39,7 @@ class ChatGPTTelegramBot:
         self.commands = [
             BotCommand(command='help', description=localized_text('help_description', bot_language)),
             BotCommand(command='reset', description=localized_text('reset_description', bot_language)),
+            BotCommand(command='continue', description=localized_text('continue_description', bot_language)),
             BotCommand(command='image', description=localized_text('image_description', bot_language)),
             BotCommand(command='stats', description=localized_text('stats_description', bot_language)),
             BotCommand(command='resend', description=localized_text('resend_description', bot_language))
@@ -353,7 +354,24 @@ class ChatGPTTelegramBot:
 
         await wrap_with_indicator(update, context, _execute, constants.ChatAction.TYPING)
 
-    async def prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def prompt(self, update: Update, context: ContextTypes.DEFAULT_TYPE):        # Reset.
+        if not await is_allowed(self.config, update, context):
+            logging.warning(f'User {update.message.from_user.name} (id: {update.message.from_user.id}) '
+                            f'is not allowed to reset the conversation')
+            await self.send_disallowed_message(update, context)
+            return
+
+        logging.info(f'Resetting the conversation for user {update.message.from_user.name} '
+                     f'(id: {update.message.from_user.id})...')
+
+        chat_id = update.effective_chat.id
+        self.openai.reset_chat_history(chat_id=chat_id)
+
+        # Continue.
+        await self.continue_(update, context)
+
+
+    async def continue_(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         React to incoming messages and respond accordingly.
         """
@@ -766,6 +784,7 @@ class ChatGPTTelegramBot:
             .concurrent_updates(True) \
             .build()
 
+        application.add_handler(CommandHandler('continue', self.continue_))
         application.add_handler(CommandHandler('reset', self.reset))
         application.add_handler(CommandHandler('help', self.help))
         application.add_handler(CommandHandler('image', self.image))
