@@ -695,7 +695,7 @@ class OpenAIHelper:
         image_file = io.BytesIO(image_bytes)
         image = Image.open(image_file)
         model = self.config['vision_model']
-        if model not in GPT_4_VISION_MODELS:
+        if model not in GPT_4_VISION_MODELS + GPT_4O_MODELS:
             raise NotImplementedError(f"""count_tokens_vision() is not implemented for model {model}.""")
         
         w, h = image.size
